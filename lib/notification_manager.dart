@@ -19,9 +19,12 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 const String periodicTask = "periodicNotificationTask";
 const String channelId = 'notification_channel_id';
 const String channelName = 'ช่องทางการแจ้งเตือน'; // Notification Channel
-const String channelDescription = 'นี่คือช่องทางการแจ้งเตือนสำหรับแจ้งเตือนเป็นระยะ'; // This is a channel for periodic notifications
-const String lastScheduledTimestampKey = 'lastScheduledTimestamp'; // Key สำหรับเก็บ timestamp ล่าสุด
-const String notificationIdCounterKey = 'notificationIdCounter'; // Key สำหรับเก็บ ID การแจ้งเตือนล่าสุด
+const String channelDescription =
+    'นี่คือช่องทางการแจ้งเตือนสำหรับแจ้งเตือนเป็นระยะ'; // This is a channel for periodic notifications
+const String lastScheduledTimestampKey =
+    'lastScheduledTimestamp'; // Key สำหรับเก็บ timestamp ล่าสุด
+const String notificationIdCounterKey =
+    'notificationIdCounter'; // Key สำหรับเก็บ ID การแจ้งเตือนล่าสุด
 
 /// เริ่มต้นบริการแจ้งเตือน
 /// ฟังก์ชันนี้ตั้งค่าการแจ้งเตือนสำหรับ Android และเริ่มต้น
@@ -48,7 +51,8 @@ Future<void> initializeNotificationService() async {
           AndroidFlutterLocalNotificationsPlugin>();
 
   if (androidImplementation != null) {
-    final bool? granted = await androidImplementation.requestNotificationsPermission();
+    final bool? granted =
+        await androidImplementation.requestNotificationsPermission();
     if (granted != null) {
       LogService.logger.i('Notification permission granted: $granted');
     } else {
@@ -74,7 +78,7 @@ void callbackDispatcher() {
       await prefs.setInt(notificationIdCounterKey, currentNotificationId);
 
       final String randomMessage = getRandomNotificationMessage();
-      
+
       await flutterLocalNotificationsPlugin.show(
         currentNotificationId, // ใช้ ID ที่ไม่ซ้ำกัน
         'แจ้งเตือนประจำ (เบื้องหลัง)',
@@ -93,56 +97,79 @@ void callbackDispatcher() {
         payload: 'payload_from_workmanager_$currentNotificationId',
       );
       // อัปเดต timestamp ล่าสุดเมื่อ Workmanager ส่งการแจ้งเตือน
-      await prefs.setInt(lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
-      LogService.logger.i("Periodic notification shown with ID: $currentNotificationId");
+      await prefs.setInt(
+          lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
+      LogService.logger
+          .i("Periodic notification shown with ID: $currentNotificationId");
 
       // ส่วนนี้จะถูกเรียกใช้เมื่อ periodicTask ถูกเรียก (รวมถึงเมื่อ Workmanager รันตอนบูตและถึงรอบของ periodicTask)
-      LogService.logger.i("Checking for missed notifications within periodicTask callback...");
+      LogService.logger.i(
+          "Checking for missed notifications within periodicTask callback...");
       final scheduled = prefs.getBool('isScheduled') ?? false;
 
       if (scheduled) {
         final lastTimestamp = prefs.getInt(lastScheduledTimestampKey);
         if (lastTimestamp != null) {
-          final lastScheduledDateTime = DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
+          final lastScheduledDateTime =
+              DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
           final now = DateTime.now();
 
           // คำนวณจำนวนการแจ้งเตือนที่พลาดไป
           // ใช้ค่า interval จากด้านบนสุดของไฟล์ (const Duration(minutes: 15))
-          final int missedIntervals = (now.difference(lastScheduledDateTime).inSeconds / const Duration(minutes: 15).inSeconds).floor();
+          final int missedIntervals =
+              (now.difference(lastScheduledDateTime).inSeconds /
+                      const Duration(minutes: 15).inSeconds)
+                  .floor();
 
           if (missedIntervals > 0) {
-            LogService.logger.i('พบการแจ้งเตือนที่พลาดไปจาก periodicTask (อาจเกิดจาก boot/downtime): $missedIntervals ครั้ง');
+            LogService.logger.i(
+                'พบการแจ้งเตือนที่พลาดไปจาก periodicTask (อาจเกิดจาก boot/downtime): $missedIntervals ครั้ง');
             await _triggerMissedNotifications(missedIntervals);
 
             // อัปเดต lastScheduledTimestampKey ให้เป็นเวลาที่ควรจะมีการแจ้งเตือนครั้งล่าสุดที่ถูกเรียกใช้
-            final newLastScheduledTime = lastScheduledDateTime.add(Duration(seconds: missedIntervals * const Duration(minutes: 15).inSeconds));
-            await prefs.setInt(lastScheduledTimestampKey, newLastScheduledTime.millisecondsSinceEpoch);
+            final newLastScheduledTime = lastScheduledDateTime.add(Duration(
+                seconds:
+                    missedIntervals * const Duration(minutes: 15).inSeconds));
+            await prefs.setInt(lastScheduledTimestampKey,
+                newLastScheduledTime.millisecondsSinceEpoch);
           }
         }
       }
-    } else if (task == Workmanager.iOSBackgroundTask) { // <<< แก้ไขตรงนี้: ลบ androidBootTaskName
+    } else if (task == Workmanager.iOSBackgroundTask) {
+      // <<< แก้ไขตรงนี้: ลบ androidBootTaskName
       // Workmanager.iOSBackgroundTask จะถูกเรียกเมื่อ iOS กำหนดให้ทำงานเบื้องหลัง
-      LogService.logger.i("iOS Background task detected. Checking for missed notifications...");
+      LogService.logger.i(
+          "iOS Background task detected. Checking for missed notifications...");
       final scheduled = prefs.getBool('isScheduled') ?? false;
 
       if (scheduled) {
         final lastTimestamp = prefs.getInt(lastScheduledTimestampKey);
         if (lastTimestamp != null) {
-          final lastScheduledDateTime = DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
+          final lastScheduledDateTime =
+              DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
           final now = DateTime.now();
 
-          final int missedIntervals = (now.difference(lastScheduledDateTime).inSeconds / const Duration(minutes: 15).inSeconds).floor();
+          final int missedIntervals =
+              (now.difference(lastScheduledDateTime).inSeconds /
+                      const Duration(minutes: 15).inSeconds)
+                  .floor();
 
           if (missedIntervals > 0) {
-            LogService.logger.i('พบการแจ้งเตือนที่พลาดไปจาก iOS background task: $missedIntervals ครั้ง');
+            LogService.logger.i(
+                'พบการแจ้งเตือนที่พลาดไปจาก iOS background task: $missedIntervals ครั้ง');
             await _triggerMissedNotifications(missedIntervals);
 
-            final newLastScheduledTime = lastScheduledDateTime.add(Duration(seconds: missedIntervals * const Duration(minutes: 15).inSeconds));
-            await prefs.setInt(lastScheduledTimestampKey, newLastScheduledTime.millisecondsSinceEpoch);
+            final newLastScheduledTime = lastScheduledDateTime.add(Duration(
+                seconds:
+                    missedIntervals * const Duration(minutes: 15).inSeconds));
+            await prefs.setInt(lastScheduledTimestampKey,
+                newLastScheduledTime.millisecondsSinceEpoch);
           }
         } else {
-           LogService.logger.i('iOS task was scheduled but no last timestamp found, resetting.');
-           await prefs.setInt(lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
+          LogService.logger.i(
+              'iOS task was scheduled but no last timestamp found, resetting.');
+          await prefs.setInt(
+              lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
         }
       }
     }
@@ -158,7 +185,8 @@ Future<void> _triggerMissedNotifications(int count) async {
 
   for (int i = 1; i <= count; i++) {
     currentNotificationId++; // เพิ่ม ID สำหรับแต่ละการแจ้งเตือนย้อนหลัง
-    await prefs.setInt(notificationIdCounterKey, currentNotificationId); // บันทึก ID ใหม่
+    await prefs.setInt(
+        notificationIdCounterKey, currentNotificationId); // บันทึก ID ใหม่
 
     final String randomMessage = getRandomNotificationMessage();
     await flutterLocalNotificationsPlugin.show(
@@ -176,7 +204,8 @@ Future<void> _triggerMissedNotifications(int count) async {
       ),
       payload: 'payload_missed_notification_$currentNotificationId',
     );
-    LogService.logger.i('แสดงการแจ้งเตือนย้อนหลังที่พลาดไปครั้งที่ $i, ID: $currentNotificationId');
+    LogService.logger.i(
+        'แสดงการแจ้งเตือนย้อนหลังที่พลาดไปครั้งที่ $i, ID: $currentNotificationId');
   }
 }
 
@@ -192,13 +221,12 @@ void schedulePeriodicNotification(
   Workmanager().registerPeriodicTask(
     "uniqueName_$id", // ชื่อเฉพาะสำหรับ task
     periodicTask, // ชื่อ task ที่กำหนดใน callbackDispatcher
-    frequency: interval, // ความถี่ที่ task ควรทำงาน
-    initialDelay: interval, // หน่วงเวลาเริ่มต้นก่อนการเรียกใช้ครั้งแรก
+    frequency: interval, // ความถี่
+    initialDelay: Duration.zero, // 🚀 รันเร็วสุด
     constraints: Constraints(
-      networkType: NetworkType.not_required, // ไม่จำเป็นต้องใช้เครือข่าย
+      networkType: NetworkType.not_required,
     ),
-    // เพิ่มการทำงานเมื่อ boot สำหรับ Android
-    existingWorkPolicy: ExistingWorkPolicy.replace, // หากมีอยู่แล้ว ให้แทนที่
+    existingWorkPolicy: ExistingWorkPolicy.replace,
   );
 }
 
@@ -231,7 +259,8 @@ Future<void> showTestNotification(String title, String body) async {
 
 /// ยกเลิกการแจ้งเตือนที่ตั้งเวลาไว้ทั้งหมดและ Workmanager tasks
 void cancelAllNotifications() {
-  flutterLocalNotificationsPlugin.cancelAll(); // ยกเลิกการแจ้งเตือนในเครื่องทั้งหมด
+  flutterLocalNotificationsPlugin
+      .cancelAll(); // ยกเลิกการแจ้งเตือนในเครื่องทั้งหมด
   Workmanager().cancelAll(); // ยกเลิก Workmanager tasks ทั้งหมด
   // รีเซ็ต ID counter เมื่อยกเลิกทั้งหมด
   SharedPreferences.getInstance().then((prefs) {
@@ -248,7 +277,8 @@ class NotificationPage extends StatefulWidget {
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  bool _isScheduled = false; // ติดตามว่ามีการตั้งเวลาการแจ้งเตือนแบบวนซ้ำหรือไม่
+  bool _isScheduled =
+      false; // ติดตามว่ามีการตั้งเวลาการแจ้งเตือนแบบวนซ้ำหรือไม่
   final Duration interval = const Duration(minutes: 15); // ช่วงเวลาการแจ้งเตือน
 
   late int _secondsRemaining; // นับถอยหลังสำหรับการแจ้งเตือนครั้งถัดไป
@@ -267,11 +297,35 @@ class _NotificationPageState extends State<NotificationPage> {
     final scheduled = prefs.getBool('isScheduled') ?? false;
 
     if (!scheduled) {
-      // ถ้ายังไม่มีการตั้งเวลาการแจ้งเตือน ให้เริ่มทันที
+      // ยังไม่มีการตั้งเวลา → เริ่มใหม่
       await _startNotifications(fromAutoStart: true);
     } else {
-      // ถ้ามีการตั้งเวลาอยู่แล้ว ให้ตรวจสอบสถานะและเวลาที่เหลือ
+      // มีการตั้งเวลาอยู่แล้ว → เช็ค missed notification หลัง boot ทันที
       await _checkScheduledStatus();
+
+      final lastTimestamp = prefs.getInt(lastScheduledTimestampKey);
+      if (lastTimestamp != null) {
+        final lastScheduledDateTime =
+            DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
+        final now = DateTime.now();
+
+        final int missedIntervals =
+            (now.difference(lastScheduledDateTime).inSeconds /
+                    interval.inSeconds)
+                .floor();
+
+        if (missedIntervals > 0) {
+          LogService.logger.i(
+              '🔥 พบ missed notifications หลัง boot: $missedIntervals ครั้ง');
+          await _triggerMissedNotifications(missedIntervals);
+
+          // อัปเดต lastScheduledTimestamp ให้เป็นเวลาที่ควรจะเป็น
+          final newLastScheduledTime = lastScheduledDateTime
+              .add(Duration(seconds: missedIntervals * interval.inSeconds));
+          await prefs.setInt(lastScheduledTimestampKey,
+              newLastScheduledTime.millisecondsSinceEpoch);
+        }
+      }
     }
   }
 
@@ -287,24 +341,33 @@ class _NotificationPageState extends State<NotificationPage> {
       if (_isScheduled) {
         final lastTimestamp = prefs.getInt(lastScheduledTimestampKey);
         if (lastTimestamp != null) {
-          final lastScheduledDateTime = DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
+          final lastScheduledDateTime =
+              DateTime.fromMillisecondsSinceEpoch(lastTimestamp);
           final now = DateTime.now();
 
           // คำนวณจำนวนการแจ้งเตือนที่พลาดไป
-          final int missedIntervals = (now.difference(lastScheduledDateTime).inSeconds / interval.inSeconds).floor();
+          final int missedIntervals =
+              (now.difference(lastScheduledDateTime).inSeconds /
+                      interval.inSeconds)
+                  .floor();
 
           if (missedIntervals > 0) {
-            LogService.logger.i('พบการแจ้งเตือนที่พลาดไป: $missedIntervals ครั้ง');
+            LogService.logger
+                .i('พบการแจ้งเตือนที่พลาดไป: $missedIntervals ครั้ง');
             // เรียก _triggerMissedNotifications ตรงๆ จาก _NotificationPageState
             _triggerMissedNotifications(missedIntervals);
 
             // อัปเดต lastScheduledTimestampKey ให้เป็นเวลาที่ควรจะมีการแจ้งเตือนครั้งล่าสุดที่ถูกเรียกใช้
-            final newLastScheduledTime = lastScheduledDateTime.add(Duration(seconds: missedIntervals * interval.inSeconds));
-            prefs.setInt(lastScheduledTimestampKey, newLastScheduledTime.millisecondsSinceEpoch);
+            final newLastScheduledTime = lastScheduledDateTime
+                .add(Duration(seconds: missedIntervals * interval.inSeconds));
+            prefs.setInt(lastScheduledTimestampKey,
+                newLastScheduledTime.millisecondsSinceEpoch);
           }
 
           // คำนวณเวลาที่เหลือจนกว่าจะถึงรอบ 15 นาทีถัดไป
-          final int remainingSeconds = interval.inSeconds - (now.difference(lastScheduledDateTime).inSeconds % interval.inSeconds);
+          final int remainingSeconds = interval.inSeconds -
+              (now.difference(lastScheduledDateTime).inSeconds %
+                  interval.inSeconds);
           _startTimer(remainingSeconds);
         } else {
           // หากไม่มี timestamp (อาจเกิดจากการติดตั้งครั้งแรกหรือข้อมูลหาย) ให้เริ่มจาก 15 นาทีเต็ม
@@ -364,20 +427,23 @@ class _NotificationPageState extends State<NotificationPage> {
 
     // ไม่แสดงแจ้งเตือน "เริ่มต้น" เมื่อเป็นการเริ่มอัตโนมัติจากการเปิดแอป
     if (!fromAutoStart) {
-      await showTestNotification('แจ้งเตือนเริ่มต้น', 'นี่คือแจ้งเตือนแรก หลังจากเริ่มตั้งเวลา');
+      await showTestNotification(
+          'แจ้งเตือนเริ่มต้น', 'นี่คือแจ้งเตือนแรก หลังจากเริ่มตั้งเวลา');
     }
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isScheduled', true); // บันทึกสถานะการตั้งเวลา
     // บันทึก timestamp ปัจจุบันเมื่อเริ่มการตั้งเวลา
-    await prefs.setInt(lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
+    await prefs.setInt(
+        lastScheduledTimestampKey, DateTime.now().millisecondsSinceEpoch);
 
     if (!mounted) return;
     setState(() {
       _isScheduled = true;
     });
 
-    _startTimer(interval.inSeconds); // เริ่มตัวจับเวลาสำหรับการแจ้งเตือนครั้งถัดไป
+    _startTimer(
+        interval.inSeconds); // เริ่มตัวจับเวลาสำหรับการแจ้งเตือนครั้งถัดไป
 
     if (!fromAutoStart) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -450,7 +516,8 @@ class _NotificationPageState extends State<NotificationPage> {
                   icon: const Icon(Icons.notifications_active),
                   label: const Text('เริ่มแจ้งเตือนทุก 15 นาที'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 15),
                     textStyle: const TextStyle(fontSize: 18),
                   ),
                 ),
@@ -476,7 +543,8 @@ class _NotificationPageState extends State<NotificationPage> {
               label: const Text('หยุดแจ้งเตือนทั้งหมด'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
               ),
             ),
@@ -487,7 +555,8 @@ class _NotificationPageState extends State<NotificationPage> {
               label: const Text('ทดสอบแจ้งเตือนทันที'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 textStyle: const TextStyle(fontSize: 18),
               ),
             ),

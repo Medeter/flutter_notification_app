@@ -9,8 +9,16 @@ final List<String> notificationMessages = [
   'ถึงเวลาเช็คลิสต์แล้ว! มีอะไรต้องทำอีกไหม?',
 ];
 
-// Function to get a random message
+// ใช้ global เพื่อจำข้อความครั้งก่อน
+String? _lastMessage;
+
+// Function to get a random message (ไม่ซ้ำกับข้อความครั้งก่อน)
 String getRandomNotificationMessage() {
-  final random = Random(); // Removed the underscore
-  return notificationMessages[random.nextInt(notificationMessages.length)];
+  final random = Random(DateTime.now().millisecondsSinceEpoch);
+  String newMessage;
+  do {
+    newMessage = notificationMessages[random.nextInt(notificationMessages.length)];
+  } while (newMessage == _lastMessage && notificationMessages.length > 1);
+  _lastMessage = newMessage;
+  return newMessage;
 }
